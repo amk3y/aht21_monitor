@@ -21,7 +21,8 @@
 #define DISP_SCLK GPIO_NUM_4
 #define DISP_MOSI GPIO_NUM_6
 
-static lv_disp_t* disp_handle;
+static esp_lcd_panel_handle_t main_lcd_panel_handle;
+static lv_disp_t* lvgl_main_display_handle;
 
 void init_spi_bus(){
     const spi_bus_config_t buscfg = {
@@ -33,6 +34,20 @@ void init_spi_bus(){
             .max_transfer_sz = DISP_HEIGHT * DISP_DRAW_BUFFER_HEIGHT * sizeof(uint16_t)
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
+}
+
+void i2c_setup(){
+    i2c_config_t i2c_config =
+            {
+                    .mode = I2C_MODE_MASTER,
+                    .sda_io_num = GPIO_NUM_8,
+                    .sda_pullup_en = GPIO_PULLUP_ENABLE,
+                    .scl_io_num = GPIO_NUM_9,
+                    .scl_pullup_en = GPIO_PULLUP_ENABLE,
+                    .master.clk_speed =  10 * 10000,
+            };
+    i2c_param_config(I2C_NUM_0, &i2c_config);
+    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
 }
 
 void init_lvgl_disp(){
@@ -56,25 +71,25 @@ void init_lvgl_disp(){
 
     /* LCD driver initialization */
 
-    esp_lcd_panel_handle_t lcd_panel_handle;
     const esp_lcd_panel_dev_config_t panel_config = {
             .reset_gpio_num = DISP_GPIO_RES,
             .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
             .bits_per_pixel = 16,
     };
-    ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &lcd_panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &main_lcd_panel_handle));
 
-    esp_lcd_panel_reset(lcd_panel_handle);
-    esp_lcd_panel_init(lcd_panel_handle);
-    esp_lcd_panel_disp_on_off(lcd_panel_handle, true);
-    //  depend on hardware
-    esp_lcd_panel_invert_color(lcd_panel_handle, true);
-    esp_lcd_panel_set_gap(lcd_panel_handle, 0, 80);
+    esp_lcd_panel_reset(main_lcd_panel_handle);
+    esp_lcd_panel_init(main_lcd_panel_handle);
+    // turn off display before first lvgl update to avoid flickering
+    esp_lcd_panel_disp_on_off(main_lcd_panel_handle, false);
+    // depend on hardware
+    esp_lcd_panel_invert_color(main_lcd_panel_handle, true);
+    esp_lcd_panel_set_gap(main_lcd_panel_handle, 0, 80);
 
     /* Add LCD screen */
     const lvgl_port_display_cfg_t disp_cfg = {
             .io_handle = io_handle,
-            .panel_handle = lcd_panel_handle,
+            .panel_handle = main_lcd_panel_handle,
             .buffer_size = DISP_HEIGHT * DISP_DRAW_BUFFER_HEIGHT * sizeof(uint16_t),
             .double_buffer = true,
             .hres = DISP_WIDTH,
@@ -92,22 +107,12 @@ void init_lvgl_disp(){
             }
     };
 
-    disp_handle = lvgl_port_add_disp(&disp_cfg);
+    lvgl_main_display_handle = lvgl_port_add_disp(&disp_cfg);
 }
 
-
-void i2c_setup(){
-    i2c_config_t i2c_config =
-            {
-                    .mode = I2C_MODE_MASTER,
-                    .sda_io_num = GPIO_NUM_8,
-                    .sda_pullup_en = GPIO_PULLUP_ENABLE,
-                    .scl_io_num = GPIO_NUM_9,
-                    .scl_pullup_en = GPIO_PULLUP_ENABLE,
-                    .master.clk_speed =  10 * 10000,
-            };
-    i2c_param_config(I2C_NUM_0, &i2c_config);
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+void init_lvgl_scene(void){
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_update_layout(lv_screen_active());
 }
 
 void task_aht20_measurement(void* pvParameters) {
@@ -190,9 +195,13 @@ void task_aht20_measurement(void* pvParameters) {
 
 void app_main() {
 
+    i2c_setup();
     init_spi_bus();
     init_lvgl_disp();
-    i2c_setup();
+    init_lvgl_scene();
+
+    vTaskDelay(40 / portTICK_PERIOD_MS);
+    esp_lcd_panel_disp_on_off(main_lcd_panel_handle, true);
 
     xTaskCreate(&task_aht20_measurement, "task_aht20", 2048, NULL, 2, NULL);
 }
