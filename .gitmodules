@@ -2,3 +2,6 @@
 	path = components/lvgl
 	url = https://github.com/lvgl/lvgl
 	branch = release/v9.2
+[submodule "components/esp_idf_aht20"]
+	path = components/esp_idf_aht20
+	url = https://github.com/amk3y/esp-idf-aht20.git
