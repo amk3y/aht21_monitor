@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "esp_lvgl_port.h": "c",
+        "esp_lcd_types.h": "c",
+        "lcd_types.h": "c"
+    }
+}
