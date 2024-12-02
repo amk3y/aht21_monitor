@@ -173,7 +173,7 @@ void task_aht20_measurement(void* pvParameters) {
     lv_obj_update_layout(lv_screen_active());
 
     while (1) {
-        vTaskDelay(250 / portTICK_PERIOD_MS);
+        vTaskDelay(1250 / portTICK_PERIOD_MS);
         esp_err_t ret = AHT20_measure(&sensor_data);
         if (ret != ESP_OK) {
             continue;
