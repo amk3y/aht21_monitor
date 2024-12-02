@@ -12,6 +12,7 @@
 #include <driver/i2c.h>
 
 #include "aht20.h"
+
 #define DISP_WIDTH 240
 #define DISP_HEIGHT 240
 #define DISP_DRAW_BUFFER_HEIGHT 40
@@ -136,10 +137,22 @@ void task_aht20_measurement(void* pvParameters) {
     lv_obj_t * label_temp_val = lv_label_create(lv_screen_active());
     lv_obj_t * label_rh_val = lv_label_create(lv_screen_active());
 
+    // keep hidden until aligned
+    lv_obj_add_flag(label_rh_title, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(label_temp_title,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(label_rh_val, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(label_temp_val, LV_OBJ_FLAG_HIDDEN);
+
     lv_obj_add_style(label_rh_title, &label_style_title, LV_STATE_DEFAULT);
     lv_obj_add_style(label_temp_title, &label_style_title, LV_STATE_DEFAULT);
     lv_obj_add_style(label_rh_val, &label_style_value, LV_STATE_DEFAULT);
     lv_obj_add_style(label_temp_val, &label_style_value, LV_STATE_DEFAULT);
+
+    lv_label_set_text(label_rh_title, "Relative Humidity");
+    lv_label_set_text(label_temp_title, "Temperature");
+    lv_label_set_text_fmt(label_rh_val, "--");
+    lv_label_set_text_fmt(label_temp_val, "--");
+
     lv_obj_update_layout(lv_screen_active());
 
     lv_coord_t coord_height_label_temp_title = lv_obj_get_height(label_temp_title);
@@ -152,10 +165,12 @@ void task_aht20_measurement(void* pvParameters) {
     lv_obj_align(label_rh_title, LV_ALIGN_CENTER, 0, coord_height_label_rh_title / 2);
     lv_obj_align(label_rh_val, LV_ALIGN_CENTER, 0, coord_height_label_rh_title / 2 + coord_height_label_rh_val / 2);
 
-    lv_label_set_text(label_rh_title, "Relative Humidity");
-    lv_label_set_text(label_temp_title, "Temperature");
-    lv_label_set_text_fmt(label_rh_val, "--");
-    lv_label_set_text_fmt(label_temp_val, "--");
+    lv_obj_remove_flag(label_rh_title, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(label_temp_title,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(label_rh_val, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(label_temp_val, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_update_layout(lv_screen_active());
 
     while (1) {
         vTaskDelay(250 / portTICK_PERIOD_MS);
